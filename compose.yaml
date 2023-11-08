@@ -1,0 +1,26 @@
+version: '3.1'
+services:
+  tempo:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    build:
+      context: ./tempo
+      dockerfile: Dockerfile
+    restart: always
+    command: gunicorn -b 0.0.0.0:5011 "app:create_app()" --reload
+    volumes:
+      - ./tempo:/code
+    depends_on:
+      - redis
+  redis:
+    image: redislabs/redismod:latest
+    ports:
+      - '6381:6379'
+  nginx:
+    build: nginx
+    restart: always
+    ports:
+      - 8095:80
+    depends_on: 
+      - tempo
+

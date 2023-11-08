@@ -1,0 +1,130 @@
+
+
+<!doctype html>
+<html>
+<head>
+  <meta charset=UTF-8>
+  <title>Celery Example</title>
+</head>
+<body>
+
+<hr>
+
+<h4>Process</h4>
+<p>Start a task that counts, waiting one second each time, showing progress.
+<form id=process method=post action='{{ url_for("api_blueprint.process") }}'>
+  <label>Total <input type=number name=total value="10"></label><br>
+  <input type=submit>
+</form>
+<p>Result: <span id=process-result></span></p>
+
+<h4>Extract Keywords</h4>
+<p>Extract Keywords from blog text </p>
+<form id=extract method=post action='{{ url_for("api_blueprint.extract_keywords") }}''>
+  <input type=submit>
+</form>
+<p>Result: <span id=extract-result></span></p>
+
+
+
+<table>
+    <thead>
+        <tr>
+            <th>Blog ID</th>
+            <th>Blog Text</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for blog in blogs %}
+            <tr>
+                <td>{{blog['id']}}</td>
+                <td>{{blog['body']}}</td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script>
+    const taskForm = (formName, doPoll, report) => {
+      document.forms[formName].addEventListener("submit", (event) => {
+        event.preventDefault()
+        fetch(event.target.action, {
+          method: "POST",
+          body: new FormData(event.target)
+        })
+          .then(response => response.json())
+          .then(data => {
+            report(null)
+  
+            const poll = () => {
+              fetch(`/api/result/${data["result_id"]}`)
+                .then(response => response.json())
+                .then(data => {
+                  report(data)
+  
+                  if (!data["ready"]) {
+                    setTimeout(poll, 500)
+                  } else if (!data["successful"]) {
+                    console.error(formName, data)
+                  }
+                })
+            }
+  
+            if (doPoll) {
+              poll()
+            }
+          })
+      })
+    }
+  
+    // taskForm("add", true, data => {
+    //   const el = document.getElementById("add-result")
+  
+    //   if (data === null) {
+    //     el.innerText = "submitted"
+    //   } else if (!data["ready"]) {
+    //     el.innerText = "waiting"
+    //   } else if (!data["successful"]) {
+    //     el.innerText = "error, check console"
+    //   } else {
+    //     el.innerText = data["value"]
+    //   }
+    // })
+  
+    // taskForm("block", false, data => {
+    //   document.getElementById("block-result").innerText = (
+    //     "request finished, check celery log to see task finish in 5 seconds"
+    //   )
+    // })
+  
+    taskForm("process", true, data => {
+      const el = document.getElementById("process-result")
+  
+      if (data === null) {
+        el.innerText = "submitted"
+      } else if (!data["ready"]) {
+        el.innerText = `${data["value"]["current"]} / ${data["value"]["total"]}`
+      } else if (!data["successful"]) {
+        el.innerText = "error, check console"
+      } else {
+        el.innerText = "✅ done"
+      }
+      console.log(data)
+    })
+  
+    taskForm("extract", true, data => {
+      const el = document.getElementById("extract-result")
+
+        if (data === null) {
+            el.innerText = "submitted"
+        } else if (!data["ready"]) {
+            el.innerText = "waiting"
+        } else if (!data["successful"]) {
+            el.innerText = "error, check console"
+        } else {
+            el.innerText = JSON.stringify(data["value"])
+        }
+    })
+  </script>
+
+</body>
